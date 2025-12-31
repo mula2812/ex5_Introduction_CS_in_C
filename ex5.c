@@ -1,7 +1,4 @@
-/***********
- ID:
- NAME:
-***********/
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,11 +32,11 @@ typedef struct TVShow {
 TVShow ***database = NULL;
 int dbSize = 0;
 
-// functions signetures
+// functions signatures
 
 void removeSpacesFromString(char*);
 char *getString();
-int validLength(char*);
+int isValidLength(char*);
 int countShows();
 
 // resize functions signatures
@@ -73,7 +70,7 @@ void printEpisode();
 void printSeason();
 void printShow();
 
-// functions implemen
+// functions implementation
 void removeSpacesFromString(char *str) {
     if (str == NULL){
         return;
@@ -120,7 +117,11 @@ char *getString(){
         length++;
     }
     if(str!=NULL){
+        // resize the string to the exact length plus one for the \0
+        str=(char*)realloc(str, sizeof(char)*length+1);
+
         *(str+length)='\0'; // null-terminate the string
+        
         // remove spaces from the end of the string
         removeSpacesFromString(str);
         
@@ -129,7 +130,7 @@ char *getString(){
     return NULL;
 }
 
-int validLength(char *s){
+int isValidLength(char *s){
     // check if the length of the string is MAX_LENGTH_FOR_EPISODE
     if((int)strlen(s) != MAX_LENGTH_FOR_EPISODE){
         return FALSE;
@@ -139,14 +140,14 @@ int validLength(char *s){
     for(int i=0; i < (int)strlen(s); i++){
 
         // check if thre is a colon in the correct place
-        if(!((i + 1) % PLACE_OF_COLON)){
-            if(s[i]!=':'){
+        if(((i + 1) % PLACE_OF_COLON) == 0){
+            if(s[i] != ':'){
                 return FALSE;
             }
         }
         else{
             // check if the character is a digit
-            if(!(s[i] >= BASE_10_FIRST_DIGIT && s[i] <= BASE_10_LAST_DIGIT)){
+            if((s[i] >= BASE_10_FIRST_DIGIT && s[i] <= BASE_10_LAST_DIGIT) == FALSE){
                 return FALSE;
             }
             // check if the tens digit in time is valid (less than 6)
@@ -164,7 +165,7 @@ int countShows(){
     int sumOfExistingShows = 0;
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
-            if(database[i][j]){
+            if(database[i][j] != NULL){
                 sumOfExistingShows++;
             }
         }
@@ -273,15 +274,30 @@ void freeShow(TVShow *show){
     free(show);
 }
 void freeAll(){
+    if(database == NULL){
+        return;
+    }
+    
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
             // check if the cell is not empty
-            if(database[i][j]){
+            if(database[i][j] != NULL){
             
                 // free the show
                 freeShow(database[i][j]);
             }
         }
+    }
+    
+    // free all the rows from the matrix
+    if (database) {
+        for(int i = 0; i < dbSize; i++){
+            // free each row
+            free(database[i]);
+        }
+        // free the database
+        free(database);
+        database = NULL;
     }
 }
 
@@ -290,7 +306,7 @@ TVShow *findShow(char *name){
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
             // check if the cell is not empty and the name matches
-            if(database[i][j] && strcmp(database[i][j] -> name,name) == 0){
+            if(database[i][j] != NULL && strcmp(database[i][j] -> name,name) == 0){
                 show = database[i][j];
                 break;
             }
@@ -390,7 +406,7 @@ void addShow(){
 
 void addSeasonInCorrectPlace(TVShow *tvShow, char *seasonName, int position){
     // if there are no existing seasons
-    if(!(tvShow -> seasons)){
+    if((tvShow -> seasons) == NULL){
 
         // create first season
         Season *head = (Season *)malloc(sizeof(Season));
@@ -463,9 +479,15 @@ void addShowInCorrectPlace(char *nameCurrentChar){
     int cellNum = 0;
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
-            tempArray[cellNum] = database[i][j];
-            cellNum++;
+            if (database[i][j] != NULL) {
+                tempArray[cellNum] = database[i][j];
+                cellNum++;
+            }
         }
+    }
+    // fill the rest of the temp array with existing shows
+    for(int i = cellNum; i < dbSize * dbSize; i++){
+        tempArray[i] = NULL;
     }
 
     int emptyPlace = -1;
@@ -541,7 +563,7 @@ void addEpisodeInCorrectPlace(Season *season,
         char *episodeName, char *episodeLength, int position){
     
     // if there are no existing episodes
-    if(!(season -> episodes)){
+    if((season -> episodes) == NULL){
         // create first episode
         Episode *head = (Episode *)malloc(sizeof(Episode));
         if(head == NULL){
@@ -608,7 +630,7 @@ void addSeason(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -655,7 +677,7 @@ void addEpisode(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -672,7 +694,7 @@ void addEpisode(){
 
     // find the season in the show
     Season *chosenTVShowSeason = findSeason(currentTVShow, chosenTVShowSeasonName);
-    if(!chosenTVShowSeason){
+    if(chosenTVShowSeason == NULL){
         printf("Season not found.\n");
         free(chosenTVShowSeasonName);
         return;
@@ -702,7 +724,7 @@ void addEpisode(){
     }
     
     // validate the length and ask again if not valid
-    while(!validLength(chosenEpisodeLength)){
+    while(isValidLength(chosenEpisodeLength) == FALSE){
         printf("Invalid length, enter again:\n");
         free(chosenEpisodeLength);
         chosenEpisodeLength = getString();
@@ -737,7 +759,7 @@ void deleteShow(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -769,7 +791,7 @@ void deleteShow(){
     int cellNum = 0;
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
-            if(database[i][j]){
+            if(database[i][j] != NULL) {
                 tempArray[cellNum] = database[i][j];
                 cellNum++;
             }
@@ -780,17 +802,6 @@ void deleteShow(){
     for(int i = cellNum; i < dbSize * dbSize; i++){
         tempArray[i] = NULL;
     }
-    
-    // returning all the values from the temp array to the database
-    int index = 0;
-    for(int i = 0; i < dbSize; i++){
-        for(int j = 0; j < dbSize; j++){
-            database[i][j] = tempArray[index];
-            index++;
-        }
-    }
-
-    free(tempArray); // free the temp array
 
     int countExsitingShows = countShows();
     int sumOfCellsWithoutLastRowAndCol = (dbSize - 1) * (dbSize - 1);
@@ -803,6 +814,17 @@ void deleteShow(){
         shrinkDB();
     }
 
+    // returning all the values from the temp array to the database
+    int index = 0;
+    for(int i = 0; i < dbSize; i++){
+        for(int j = 0; j < dbSize; j++){
+            database[i][j] = tempArray[index];
+            index++;
+        }
+    }
+
+    free(tempArray); // free the temp array
+    
     // free the show
     freeShow(currentTVShow);
     
@@ -818,7 +840,7 @@ void deleteSeason(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -835,7 +857,7 @@ void deleteSeason(){
 
     // find the season in the show
     Season *chosenTVShowSeason = findSeason(currentTVShow, chosenTVShowSeasonName);
-    if(!chosenTVShowSeason){
+    if(chosenTVShowSeason == NULL){
         printf("Season not found.\n");
         free(chosenTVShowSeasonName);
         return;
@@ -870,7 +892,7 @@ void deleteEpisode(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -887,7 +909,7 @@ void deleteEpisode(){
 
     // find the season in the show
     Season *chosenTVShowSeason = findSeason(currentTVShow, chosenTVShowSeasonName);
-    if(!chosenTVShowSeason){
+    if(chosenTVShowSeason == NULL){
         printf("Season not found.\n");
         free(chosenTVShowSeasonName);
         return;
@@ -904,7 +926,7 @@ void deleteEpisode(){
 
     // find the episode in the season
     Episode *currentEpisode = findEpisode(chosenTVShowSeason, chosenEpisodeName);
-    if(!currentEpisode){
+    if(currentEpisode == NULL){
         printf("Episode not found.\n");
         free(chosenEpisodeName);
         return;
@@ -941,7 +963,7 @@ void printEpisode(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -958,7 +980,7 @@ void printEpisode(){
 
     // find the season in the show
     Season *chosenTVShowSeason = findSeason(currentTVShow, chosenTVShowSeasonName);
-    if(!chosenTVShowSeason){
+    if(chosenTVShowSeason == NULL){
         printf("Season not found.\n");
         free(chosenTVShowSeasonName);
         return;
@@ -975,7 +997,7 @@ void printEpisode(){
 
     // find the episode in the season
     Episode *currentEpisode = findEpisode(chosenTVShowSeason, chosenEpisodeName);
-    if(!currentEpisode){
+    if(currentEpisode == NULL){
         printf("Episode not found.\n");
         free(chosenEpisodeName);
         return;
@@ -996,7 +1018,7 @@ void printShow(){
 
     // find the show in the database
     TVShow *currentTVShow = findShow(chosenTVShowName);
-    if(!currentTVShow){
+    if(currentTVShow == NULL){
         printf("Show not found.\n");
         free(chosenTVShowName);
         return;
@@ -1011,6 +1033,7 @@ void printShow(){
     while(currentSeason){
         printf("\tSeason %d: %s\n", seasonCount, currentSeason -> name);
         Episode *currentEpisode = currentSeason -> episodes;
+        episodeCount = 0;
         while(currentEpisode){
             printf("\t\tEpisode %d: %s (%s)\n", episodeCount, 
                 currentEpisode -> name, currentEpisode -> length);
@@ -1026,7 +1049,7 @@ void printShow(){
 void printArray(){
     for(int i = 0; i < dbSize; i++){
         for(int j = 0; j < dbSize; j++){
-            if(database[i][j]){
+            if(database[i][j] != NULL){
                 printf("[%s] ", database[i][j] -> name);
             }
             else{
